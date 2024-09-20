@@ -18,22 +18,28 @@ generate_password() {
 
 # function to create an IAM group 
 create_iam_group() {
-    echo "Creating IAM group: $GROUP_NAME"
-    if aws iam create-group --group-name "$GROUP_NAME" --region "$AWS_REGION"; then
-        echo "Group $GROUP_NAME created successfully."
+    echo "Checking if IAM group $GROUP_NAME exists..."
+    if aws iam get-group --group-name "$GROUP_NAME" --region "$AWS_REGION" >/dev/null 2>&1; then
+        echo "Group $GROUP_NAME already exists."
     else
-        echo "Error: Failed to create group $GROUP_NAME." >&2
-        exit 1
-    fi
-    
-    echo "Attaching policy $POLICY_ARN to group $GROUP_NAME"
-    if aws iam attach-group-policy --group-name "$GROUP_NAME" --policy-arn "$POLICY_ARN" --region "$AWS_REGION"; then
-        echo "Policy attached successfully."
-    else
-        echo "Error: Failed to attach policy to group $GROUP_NAME." >&2
-        exit 1
+        echo "Creating IAM group: $GROUP_NAME"
+        if aws iam create-group --group-name "$GROUP_NAME" --region "$AWS_REGION"; then
+            echo "Group $GROUP_NAME created successfully."
+        else
+            echo "Error: Failed to create group $GROUP_NAME." >&2
+            exit 1
+        fi
+        
+        echo "Attaching policy $POLICY_ARN to group $GROUP_NAME"
+        if aws iam attach-group-policy --group-name "$GROUP_NAME" --policy-arn "$POLICY_ARN" --region "$AWS_REGION"; then
+            echo "Policy attached successfully."
+        else
+            echo "Error: Failed to attach policy to group $GROUP_NAME." >&2
+            exit 1
+        fi
     fi
 }
+
 
 # Create the IAM group
 create_iam_group
@@ -41,6 +47,13 @@ create_iam_group
 # Loop through each username to create IAM users
 for username in "${USERNAMES[@]}"; do
     echo "Creating IAM user: $username"
+    
+    # Check if the user already exists
+    if aws iam get-user --user-name "$username" --region "$AWS_REGION" >/dev/null 2>&1; then
+        echo "User $username already exists. Skipping user creation."
+        continue
+    fi
+    
 
 # Create IAM user
    if aws iam create-user --user-name "$username" --region "$AWS_REGION"; then
